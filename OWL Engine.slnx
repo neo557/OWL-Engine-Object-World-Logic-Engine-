@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="../DOESOMTests/DOESOMTests/DOESUETests.csproj" />
+  <Project Path="../DOESUM/DOESUM/DOESUE.csproj" />
+  <Project Path="OWL Engine/OWL Engine.csproj" />
+</Solution>
