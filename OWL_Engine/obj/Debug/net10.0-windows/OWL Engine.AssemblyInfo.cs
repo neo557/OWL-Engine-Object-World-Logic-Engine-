@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OWL Engine")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5832a20eae0b56fae25e840367e3ff5ae3a4c849")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+20c17ea366e8f49a9f3ad90da4f3ee40e64a541c")]
 [assembly: System.Reflection.AssemblyProductAttribute("OWL Engine")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OWL Engine")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

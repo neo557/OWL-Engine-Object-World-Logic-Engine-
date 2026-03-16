@@ -1,5 +1,5 @@
 <Solution>
   <Project Path="../DOESOMTests/DOESOMTests/DOESUETests.csproj" />
   <Project Path="../DOESUM/DOESUM/DOESUE.csproj" />
-  <Project Path="OWL Engine/OWL Engine.csproj" />
+  <Project Path="OWL Engine/OWL_Engine.csproj" />
 </Solution>
