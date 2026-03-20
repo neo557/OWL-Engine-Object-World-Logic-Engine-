@@ -79,6 +79,55 @@ Build and run using Visual Studio 2022 or later.
 - UI improvements
 
 ## Changelog
+
+# v1.1.0 – Grid Overhaul & Object Rotation Update
+
+## Grid System Improvements
+- Implemented a fully redesigned infinite grid system
+
+- Added fine-grid rendering with dynamic subdivision
+
+- Grid now supports adjustable resolution (gridSize)
+
+- Fixed UV mapping to align grid tiles with world coordinates
+
+- Improved grid visibility and stability in 3D space
+
+- Resolved transparency and backface issues on grid plane
+
+### Object Transform Improvements
+- Added Y-axis rotation for all objects
+
+- Established a unified Transform3DGroup structure
+
+ - Scale
+
+ - Rotate
+
+ - Translate
+
+- Ensured rotation persists through highlight/unhighlight
+
+- Improved highlight system to avoid destroying transforms
+
+### New 3D Object Geometry
+- TriangleObject upgraded from flat polygon → 3D triangular prism
+
+- RectangleObject upgraded from flat quad → 3D box
+
+- Objects now have proper thickness and render correctly from all angles
+
+- Improved selection accuracy and visual clarity
+
+### Rendering & Architecture Enhancements
+- Cleaned up transform handling across renderer
+
+- Improved object creation pipeline
+
+- Ensured consistent behavior across all object types
+
+- Fixed several issues related to object visibility and transform resets
+- 
 # v1.0.0 – Initial Release
 - Implemented 3D grid rendering
 
