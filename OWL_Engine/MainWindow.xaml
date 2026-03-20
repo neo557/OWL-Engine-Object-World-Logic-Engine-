@@ -12,7 +12,7 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="250" />
         </Grid.ColumnDefinitions>
-        
+
         <!--左:オブジェクト階層表示-->
         <DockPanel Grid.Column="0" Background="#2222">
             <TextBlock Text="Objects" Foreground="White" FontSize="16" Margin="5" />
@@ -22,11 +22,25 @@
         </DockPanel>
 
         <!--中央:３Dモデル表示-->
-        <Viewport3D Name="View3D"  Grid.Column="1" MouseMove="UpdateLoop" MouseDown="View3D_MouseDown">
+        <Viewport3D Name="View3D"  Grid.Column="1" MouseDown="View3D_MouseDown" >
+            <Viewport3D.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Create Cube" Click="CreateCube_Click"/>
+                    <MenuItem Header="Create Rectangle" Click="CreateRectangle_Click"/>
+                    <MenuItem Header="Create Triangle" Click="CreateTriangle_Click"/>
+                </ContextMenu>
+            </Viewport3D.ContextMenu>
+
             <Viewport3D.Camera>
-                <PerspectiveCamera Position="20, 20, 20" LookDirection="-20, -20, -20" UpDirection="0, 1, 0" FieldOfView="60" />
+                <PerspectiveCamera Position="20, 20, 20"
+                           LookDirection="-20, -20, -20"
+                           UpDirection="0, 1, 0"
+                           FieldOfView="60" />
             </Viewport3D.Camera>
+
+
         </Viewport3D>
+        
 
         <!--右:オブジェクト情報-->
         <StackPanel Grid.Column="2" Background="#222">
@@ -36,6 +50,15 @@
             <TextBlock Text="Object ID"/>
             <TextBlock Text="IDText"/>
         </StackPanel>
+
+        <ComboBox x:Name="GridSize"
+  SelectionChanged="GridSizeBox_SelectionChanged" Grid.Column="2" Margin="0,459,0,260">
+            <ComboBoxItem Content="1" />
+            <ComboBoxItem Content="0.5" />
+            <ComboBoxItem Content="0.25" />
+            <ComboBoxItem Content="0.125" />
+            <ComboBoxItem Content="0.0625" />
+        </ComboBox>
 
 
     </Grid>

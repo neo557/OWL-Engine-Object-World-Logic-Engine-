@@ -10,12 +10,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Asset\grid_fine.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.34.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\DOESOMTests\DOESOMTests\DOESUETests.csproj" />
     <ProjectReference Include="..\..\DOESUM\DOESUM\DOESUE.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Asset\grid_fine.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
 </Project>

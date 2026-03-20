@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using DOESUE.Math;
 using System.Windows;
 using System.Windows.Input;
-using VisualTreeHelper = System.Windows.Media.VisualTreeHelper;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
-using DOESUE.Math;
-using OWL_Engine.Worlds;
-using OWL_Engine.Camera;
 using Viewport3D = System.Windows.Controls.Viewport3D;
+using VisualTreeHelper = System.Windows.Media.VisualTreeHelper;
+using OWL_Engine.Render;
+using OWL_Engine.Managers;
 
 namespace OWL_Engine.VisualTree
 {
@@ -50,6 +47,5 @@ namespace OWL_Engine.VisualTree
             return HitTestResultBehavior.Stop;
         }
 
-        
     }
 }

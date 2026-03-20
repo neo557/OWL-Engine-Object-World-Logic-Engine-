@@ -15,7 +15,7 @@ namespace OWL_Engine.Camera
         PerspectiveCamera camera;
         Viewport3D viewport;
         double yaw = 45;
-        double pitch = -30;
+        double pitch = 30;
         double distance = 30;
 
         Point lastMouse;
@@ -26,20 +26,20 @@ namespace OWL_Engine.Camera
         bool panning = false;
 
         //bool zooming = false;
+        bool rightDown = false;
+        bool moved = false;
+        Point downPos;
+        double moveThreshold = 4; // 4px 以上動いたら「移動」と判定
 
 
         public CameraMove(Viewport3D view)
         {
             viewport = view;
-            
             camera = (PerspectiveCamera)view.Camera;
-
-            view.Loaded += OnLoaded;
-
             UpdateCamera();
         }
 
-        void OnLoaded(object sender, RoutedEventArgs e)
+        public void Attach()
         {
             var window = Window.GetWindow(viewport);
             window.MouseMove += View_MouseMove;
@@ -51,54 +51,99 @@ namespace OWL_Engine.Camera
         {
             if (e.RightButton == MouseButtonState.Pressed)
             {
-                rotating = true;
-                lastMouse = e.GetPosition(viewport);
-
-                Mouse.Capture(viewport);
+                rightDown = true;
+                moved = false;
+                downPos = e.GetPosition(viewport);
             }
 
-            if(e.MiddleButton == MouseButtonState.Pressed)
+            if (e.MiddleButton == MouseButtonState.Pressed)
             {
                 panning = true;
                 lastMouse = e.GetPosition(viewport);
-                Mouse.Capture(viewport);
             }
         }
 
         void View_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            rotating = false;
-            panning = false;
-
-            Mouse.Capture(null);
-        }
-        private void View_MouseMove(object sender, MouseEventArgs e)
-        {
-            Point pos = e.GetPosition(viewport);
-
-            double dx = pos.X - lastMouse.X;
-            double dy = pos.Y - lastMouse.Y;
-
-            if(rotating)
+            if (e.ChangedButton == MouseButton.Right)
             {
+                rightDown = false;
+
+                if (!moved )
+                {
+                    // ★右クリック短押し → メニュー表示
+                    viewport.ContextMenu.IsOpen = true;
+                }
+
+                rotating = false;
+            }
+            if (e.ChangedButton == MouseButton.Middle)
+            {
+                // stop panning when middle button released
+                panning = false;
+            }
+        }
+        void View_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (rightDown)
+            {
+                var pos = e.GetPosition(viewport);
+                var dx = pos.X - downPos.X;
+                var dy = pos.Y - downPos.Y;
+
+                // 一定距離動いたら「カメラ操作モード」
+                if (Math.Abs(dx) > moveThreshold || Math.Abs(dy) > moveThreshold)
+                {
+                    moved = true;
+
+                    if (!rotating) // ← CameraMove の既存機能を使う
+                    {
+                        rotating = true;
+                        lastMouse = pos;
+                    }
+                }
+            }
+
+            if (rotating)
+            {
+                // 既存のカメラ回転処理
+                Point pos = e.GetPosition(viewport);
+                double dx = pos.X - lastMouse.X;
+                double dy = pos.Y - lastMouse.Y;
+
                 yaw += dx * 0.4;
                 pitch -= dy * 0.4;
-                if (pitch > 89) pitch = 89;
-                if (pitch < -89) pitch = -89;
-            }
 
-            if(panning)
+                pitch = Math.Max(-89, Math.Min(89, pitch)); //  反転防止
+
+                lastMouse = pos;
+                UpdateCamera();
+            }
+            if (panning)
             {
-                double panSpeed = distance * 0.01;
+                Point pos = e.GetPosition(viewport);
+                double dx = pos.X - lastMouse.X;
+                double dy = pos.Y - lastMouse.Y;
 
-                target.X -= dx * panSpeed;
-                target.Y += dy * panSpeed;
+                // カメラの右方向ベクトル
+                Vector3D right = Vector3D.CrossProduct(camera.LookDirection, camera.UpDirection);
+                right.Normalize();
+
+                // カメラの上方向ベクトル
+                Vector3D up = camera.UpDirection;
+                up.Normalize();
+
+                // マウス移動量をスケール調整
+                double panSpeed = distance * 0.002;
+
+                // ターゲットを平行移動
+                target += (-right * dx * panSpeed) + (up * dy * panSpeed);
+
+                lastMouse = pos;
+                UpdateCamera();
             }
-
-            lastMouse = pos;
-
-            UpdateCamera();
         }
+
 
         private void View_MouseWheel(object sender, MouseWheelEventArgs e)
         {
