@@ -38,4 +38,7 @@
     <ClCompile Include="OWL_Native.cpp" />
     <ClCompile Include="NativeFunction.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+  </ItemGroup>
 </Project>
