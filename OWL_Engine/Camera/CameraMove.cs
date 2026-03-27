@@ -19,7 +19,8 @@ namespace OWL_Engine.Camera
         double distance = 30;
 
         Point lastMouse;
-        Point3D target = new Point3D(0, 0, 0);
+        Point3D target = new();
+        public Point3D Target => target;
 
         bool rotating = false;
 
@@ -36,6 +37,11 @@ namespace OWL_Engine.Camera
         {
             viewport = view;
             camera = (PerspectiveCamera)view.Camera;
+            UpdateCamera();
+        }
+        public void FocusOn(Point3D pos)
+        {
+            target = pos;
             UpdateCamera();
         }
 
@@ -71,7 +77,7 @@ namespace OWL_Engine.Camera
 
                 if (!moved )
                 {
-                    // ★右クリック短押し → メニュー表示
+                    // 右クリック短押し → メニュー表示
                     viewport.ContextMenu.IsOpen = true;
                 }
 
@@ -125,18 +131,15 @@ namespace OWL_Engine.Camera
                 double dx = pos.X - lastMouse.X;
                 double dy = pos.Y - lastMouse.Y;
 
-                // カメラの右方向ベクトル
                 Vector3D right = Vector3D.CrossProduct(camera.LookDirection, camera.UpDirection);
                 right.Normalize();
 
-                // カメラの上方向ベクトル
                 Vector3D up = camera.UpDirection;
                 up.Normalize();
 
-                // マウス移動量をスケール調整
-                double panSpeed = distance * 0.002;
+                // distance に依存しない panSpeed
+                double panSpeed = 0.05;
 
-                // ターゲットを平行移動
                 target += (-right * dx * panSpeed) + (up * dy * panSpeed);
 
                 lastMouse = pos;
@@ -152,8 +155,8 @@ namespace OWL_Engine.Camera
             if (distance < 1)
                 distance = 1;
 
-            if (distance > 500)
-                distance = 500;
+            if (distance > 20000)
+                distance = 20000;
 
             UpdateCamera();
         }

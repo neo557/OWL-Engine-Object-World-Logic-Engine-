@@ -31,6 +31,7 @@ namespace OWL_Engine.Objects
                 default:
                     throw new NotImplementedException($"Unknown primitive type: {type}");
             }
-                }
+        }
+
     }
 }

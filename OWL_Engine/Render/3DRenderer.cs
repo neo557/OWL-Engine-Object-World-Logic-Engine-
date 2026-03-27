@@ -1,5 +1,6 @@
 ﻿using DOESUE.Core;
 using DOESUE.Math;
+using OWL_Engine.CImporter;
 using OWL_Engine.Objects;
 using OWL_Engine.Worlds;
 using System.Windows;
@@ -31,11 +32,10 @@ namespace OWL_Engine.Render
         private Model3DGroup gridLines = new Model3DGroup();
         public int? SelectedObjectID = null;
 
-        GeometryModel3D? cursorModel;
         TranslateTransform3D cursorTransform = new();
 
         Dictionary<int, GeometryModel3D> objectModels = new();
-        Dictionary<int, TranslateTransform3D> objectTransforms = new();
+        Dictionary<int, Transform3DGroup> objectTransforms = new();
         private Dictionary<int, RotateTransform3D> objectRotations = new();
 
         private Dictionary<int, Material> originalMaterials = new();
@@ -47,9 +47,8 @@ namespace OWL_Engine.Render
 
         Dictionary<IntVector3, List<int>> cellObjects = new();
 
+
         static MeshGeometry3D cubeMesh = CreateCubeMesh();
-        private Transform3D? rotateTransform;
-        private Transform3D? scaleTransform;
 
         public void Initialize(Viewport3D viewport)
         {
@@ -83,11 +82,7 @@ namespace OWL_Engine.Render
 
             // Viewport3D に追加
             viewport.Children.Add(sceneVisual);
-
-            // カーソルモデル
-            cursorModel = CreateCubeModel(Colors.LightBlue);
-            cursorModel.Transform = cursorTransform;
-            cursorRoot.Children.Add(cursorModel);
+;
         }
         public void InitializeGrid(Viewport3D viewport)
         {
@@ -102,6 +97,9 @@ namespace OWL_Engine.Render
             // 太線グリッド（これを忘れると何も見えない）
             gridRoot.Children.Add(gridLines);
         }
+
+
+
         private GeometryModel3D CreateGridPlane(Material mat)
         {
             double size = 200; // 200m × 200m の地面
@@ -280,12 +278,14 @@ namespace OWL_Engine.Render
             return mesh;
         }
 
-        public GeometryModel3D CreateCubeModel(Color color) //オブジェクト色変更
+        public GeometryModel3D CreateCubeModel(Color color)
         {
             var material = new DiffuseMaterial(new SolidColorBrush(color));
-            return new GeometryModel3D(cubeMesh, material);
+            return new GeometryModel3D(cubeMesh, material)
+            {
+                BackMaterial = material
+            };
         }
-
         public void UpdateVisibleArea(GridMap grid, IntVector3 center, TransFormWorld world) //グリッド視点情報
         {
             HashSet<IntVector3> needed = new();
@@ -334,37 +334,30 @@ namespace OWL_Engine.Render
             cellObjects.Remove(cell);
         }
 
-        public void UpdateObjectTransform(WorldController controller) //オブジェクト移動
+        public void UpdateObjectTransform(WorldController controller)
         {
             foreach (var kv in objectModels)
             {
                 int id = kv.Key;
-
-                var obj = controller.GetObject(id); //  WorldObject（double）
+                var obj = controller.GetObject(id);
                 if (obj == null) continue;
 
-                var pos = obj.Position; //  double の位置
+                if (!objectTransforms.TryGetValue(id, out var group))
+                    continue;
 
-                if (objectTransforms.TryGetValue(id, out var transform))
+                var translate = group.Children
+                    .OfType<TranslateTransform3D>()
+                    .FirstOrDefault();
+
+                if (translate != null)
                 {
-                    transform.OffsetX = pos.X;
-                    transform.OffsetY = pos.Y;
-                    transform.OffsetZ = pos.Z;
+                    translate.OffsetX = obj.Position.X;
+                    translate.OffsetY = obj.Position.Y;
+                    translate.OffsetZ = obj.Position.Z;
                 }
             }
         }
 
-        public void UpdateCursor()
-        {
-            if (HoverCell is IntVector3 hover)
-            {
-                double size = GridSize; // renderer.GridSize を参照するなら引数で渡す
-
-                cursorTransform.OffsetX = Math.Round(hover.X / size) * size;
-                cursorTransform.OffsetY = Math.Round(hover.Y / size) * size;
-                cursorTransform.OffsetZ = Math.Round(hover.Z / size) * size;
-            }
-        }
 
         public int? GetObjectIdFromModel(GeometryModel3D model) //オブジェクトID取得
         {
@@ -413,11 +406,12 @@ namespace OWL_Engine.Render
             if (!objectModels.TryGetValue(id, out var model))
                 return;
 
-            if (!objectTransforms.TryGetValue(id, out var translate))
+            if (!objectTransforms.TryGetValue(id, out var group))
                 return;
 
-            if (!objectRotations.TryGetValue(id, out var rotate))
-                return;
+            // 既存の TransformGroup の ScaleTransform を取得
+            var scale = group.Children.OfType<ScaleTransform3D>().FirstOrDefault();
+            if (scale == null) return;
 
             // 元のマテリアル保存
             if (!originalMaterials.ContainsKey(id))
@@ -425,18 +419,16 @@ namespace OWL_Engine.Render
 
             // 元のスケール保存
             if (!originalScale.ContainsKey(id))
-                originalScale[id] = 1.0;
+                originalScale[id] = scale.ScaleX;
 
-            //  新しい TransformGroup を作る（回転と移動は維持）
-            var group = new Transform3DGroup();
-            group.Children.Add(new ScaleTransform3D(1.2, 1.2, 1.2)); // ハイライト用スケール
-            group.Children.Add(rotate);      // ← 回転を維持
-            group.Children.Add(translate);   // ← 位置を維持
-
-            model.Transform = group;
+            // スケールだけ変更
+            scale.ScaleX = 1.1;
+            scale.ScaleY = 1.1;
+            scale.ScaleZ = 1.1;
 
             // 色変更
-            model.Material = new DiffuseMaterial(new SolidColorBrush(Colors.Yellow));
+            model.Material = new DiffuseMaterial(new SolidColorBrush(Colors.LightBlue));
+            model.BackMaterial = model.Material;
         }
 
         public void UnhighlightObject(int id)
@@ -444,39 +436,50 @@ namespace OWL_Engine.Render
             if (!objectModels.TryGetValue(id, out var model))
                 return;
 
-            if (!objectTransforms.TryGetValue(id, out var translate))
+            if (!objectTransforms.TryGetValue(id, out var group))
                 return;
 
-            if (!objectRotations.TryGetValue(id, out var rotate))
-                return;
+            var scale = group.Children.OfType<ScaleTransform3D>().FirstOrDefault();
+            if (scale == null) return;
 
             // 元のマテリアルに戻す
             if (originalMaterials.TryGetValue(id, out var mat))
+            {
                 model.Material = mat;
+                model.BackMaterial = mat;
+            }
 
             // 元のスケールに戻す
-            double scale = originalScale.ContainsKey(id) ? originalScale[id] : 1.0;
+            double s = originalScale.ContainsKey(id) ? originalScale[id] : 1.0;
 
-            //  回転と移動を維持したままスケールだけ戻す
-            var group = new Transform3DGroup();
-            group.Children.Add(new ScaleTransform3D(scale, scale, scale));
-            group.Children.Add(rotate);
-            group.Children.Add(translate);
-
-            model.Transform = group;
+            scale.ScaleX = s;
+            scale.ScaleY = s;
+            scale.ScaleZ = s;
         }
 
         public void AddObject(WorldObject obj)
         {
-            var model = new GeometryModel3D
-            {
-                Geometry = obj.Mesh,
-                Material = new DiffuseMaterial(new SolidColorBrush(obj.Color))
-            };
+            GeometryModel3D model;
 
-            var translate = new TranslateTransform3D(obj.Position.X, obj.Position.Y, obj.Position.Z);
+            if (obj.Model != null)
+            {
+                model = obj.Model;
+            }
+            else
+            {
+                model = new GeometryModel3D
+                {
+                    Geometry = obj.Mesh,
+                    Material = new DiffuseMaterial(new SolidColorBrush(obj.Color)),
+                    BackMaterial = new DiffuseMaterial(new SolidColorBrush(obj.Color))
+                };
+                obj.Model = model;
+            }
+
+            // 統一 Transform
+            var scale = new ScaleTransform3D(obj.Scale.X, obj.Scale.Y, obj.Scale.Z);
             var rotate = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), 0));
-            var scale = new ScaleTransform3D(1, 1, 1);
+            var translate = new TranslateTransform3D(obj.Position.X, obj.Position.Y, obj.Position.Z);
 
             var group = new Transform3DGroup();
             group.Children.Add(scale);
@@ -486,7 +489,7 @@ namespace OWL_Engine.Render
             model.Transform = group;
 
             objectModels[obj.Id] = model;
-            objectTransforms[obj.Id] = translate;
+            objectTransforms[obj.Id] = group;   // ★ Translate ではなく group を保存
             objectRotations[obj.Id] = rotate;
 
             _worldModels?.Children.Add(model);

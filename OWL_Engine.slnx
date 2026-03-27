@@ -1,7 +1,23 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
   <Project Path="../DOESOMTests/DOESOMTests/DOESUETests.csproj">
-    <Build Solution="Debug|*" Project="false" />
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Build Solution="Debug|Any CPU" Project="false" />
   </Project>
-  <Project Path="../DOESUM/DOESUM/DOESUE.csproj" />
-  <Project Path="OWL_Engine/OWL_Engine.csproj" />
+  <Project Path="../DOESUM/DOESUM/DOESUE.csproj">
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="OWL_Engine/OWL_Engine.csproj">
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="OWL_Native/OWL_Native.vcxproj" Id="a2bbd696-fe18-4caa-b8fa-abe458349045">
+    <BuildType Solution="Debug|x64" Project="Release" />
+  </Project>
 </Solution>

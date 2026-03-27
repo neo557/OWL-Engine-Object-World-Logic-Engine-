@@ -1,0 +1,4 @@
+﻿  NativeFunction.cpp
+C:\Users\hirog\Programmer\OWL_Engine\OWL_Native\NativeFunction.cpp(1,1): warning C4819: ファイルは、現在のコード ページ (932) で表示できない文字を含んでいます。データの損失を防ぐために、ファイルを Unicode 形式で保存してください。
+     ライブラリ C:\Users\hirog\Programmer\OWL_Engine\x64\Debug\OWL_Native.lib とオブジェクト C:\Users\hirog\Programmer\OWL_Engine\x64\Debug\OWL_Native.exp を作成中
+  OWL_Native.vcxproj -> C:\Users\hirog\Programmer\OWL_Engine\x64\Debug\OWL_Native.dll
