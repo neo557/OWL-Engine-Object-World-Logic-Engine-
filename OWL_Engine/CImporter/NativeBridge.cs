@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
 namespace OWL_Engine.CImporter
@@ -14,8 +15,8 @@ namespace OWL_Engine.CImporter
             out IntPtr vertices, out int vertexCount,
             out IntPtr uvs, out int uvCount,
             out IntPtr normals, out int normalCount,
-            out IntPtr indices, out int indexCount);
-
+            out IntPtr indices, out int indexCount,
+            out IntPtr colorPtr);
 
 
         public static MeshGeometry3D CreateMeshFromOBJFull(string path)
@@ -26,14 +27,27 @@ namespace OWL_Engine.CImporter
                 out IntPtr vPtr, out int vCount,
                 out IntPtr uvPtr, out int uvCount,
                 out IntPtr nPtr, out int nCount,
-                out IntPtr iPtr, out int iCount
+                out IntPtr iPtr, out int iCount,
+                out IntPtr colorPtr
             );
 
             if (!ok)
                 return new MeshGeometry3D();
 
             var mesh = new MeshGeometry3D();
-           
+
+            Color? diffuseColor = null;
+            if (colorPtr != IntPtr.Zero)
+            {
+                float[] col = new float[3];
+                Marshal.Copy(colorPtr, col, 0, 3);
+
+                byte r = (byte)Math.Clamp(col[0] * 255.0f, 0, 255);
+                byte g = (byte)Math.Clamp(col[1] * 255.0f, 0, 255);
+                byte b = (byte)Math.Clamp(col[2] * 255.0f, 0, 255);
+
+                diffuseColor = Color.FromRgb(r, g, b);
+            }
 
             // -------------------------
             // 頂点
@@ -101,6 +115,7 @@ namespace OWL_Engine.CImporter
                     mesh.TriangleIndices.Add(iArray[i]);
                 }
             }
+
 
             return mesh;
         }

@@ -342,18 +342,20 @@ namespace OWL_Engine.Render
                 var obj = controller.GetObject(id);
                 if (obj == null) continue;
 
-                if (!objectTransforms.TryGetValue(id, out var group))
-                    continue;
+                var model = kv.Value;
 
-                var translate = group.Children
-                    .OfType<TranslateTransform3D>()
-                    .FirstOrDefault();
-
-                if (translate != null)
+                if (model.Transform is Transform3DGroup group)
                 {
-                    translate.OffsetX = obj.Position.X;
-                    translate.OffsetY = obj.Position.Y;
-                    translate.OffsetZ = obj.Position.Z;
+                    var translate = group.Children
+                        .OfType<TranslateTransform3D>()
+                        .FirstOrDefault();
+
+                    if (translate != null)
+                    {
+                        translate.OffsetX = obj.Position.X;
+                        translate.OffsetY = obj.Position.Y;
+                        translate.OffsetZ = obj.Position.Z;
+                    }
                 }
             }
         }
@@ -489,7 +491,7 @@ namespace OWL_Engine.Render
             model.Transform = group;
 
             objectModels[obj.Id] = model;
-            objectTransforms[obj.Id] = group;   // ★ Translate ではなく group を保存
+            objectTransforms[obj.Id] = group;   // Translate ではなく group を保存
             objectRotations[obj.Id] = rotate;
 
             _worldModels?.Children.Add(model);

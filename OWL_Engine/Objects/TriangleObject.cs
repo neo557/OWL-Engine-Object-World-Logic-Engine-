@@ -1,4 +1,5 @@
 ﻿using OWL_Engine.Worlds;
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using System.Xml.Linq;
 
@@ -10,6 +11,7 @@ namespace OWL_Engine.Objects
         {
             Name = "Triangle";
             Mesh = CreateTrianglePrismMesh();
+            Color = Colors.LightGray;
         }
 
         private MeshGeometry3D CreateTrianglePrismMesh()

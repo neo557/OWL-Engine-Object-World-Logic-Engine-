@@ -6,5 +6,6 @@ bool LoadOBJFull(
     float** vertices, int* vertexCount,
     float** uvs, int* uvCount,
     float** normals, int* normalCount,
-    int** indices, int* indexCount
+    int** indices, int* indexCount,
+    float** diffuseColor
 );

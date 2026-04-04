@@ -1,5 +1,6 @@
 ﻿using DOESUE.Core;
 using DOESUE.Math;
+using OWL_Engine.Asset;
 using OWL_Engine.CImporter;
 using OWL_Engine.Managers;
 using OWL_Engine.Objects;
@@ -24,7 +25,7 @@ namespace OWL_Engine
 
         private readonly Dictionary<int, WorldObject> _objects = new();
         private int nextId = 1;
-
+        
         public void Initialize()
         {
             world = new TransFormWorld();
@@ -41,36 +42,52 @@ namespace OWL_Engine
 
         public void LoadOBJModel(string path)
         {
-            MeshGeometry3D mesh = CreateMeshFromOBJFull(path);
+            MeshGeometry3D mesh = CreateMeshFromOBJFull(path, out Color diffuse);
 
             int id = nextId++;
 
             WorldObject obj = new ImportedObject();
             obj.Id = id;
-            obj.SetMesh(mesh);
+
+            obj.Color = diffuse;      // OBJ の色
+            obj.SetMesh(mesh);        // この色でマテリアル生成
+
             obj.Position = new Point3D(0, 0, 0);
-            obj.Color = Colors.White;
+            obj.Type = "OBJ";
+            obj.ObjPath = path;
 
-            // World に登録
             world.TryCreateObject(id, new IntVector3(0, 0, 0), out _);
-
-            // 辞書に登録
             _objects[id] = obj;
-
-            // Renderer に登録
             _renderer.AddObject(obj);
         }
 
-        public MeshGeometry3D CreateMeshFromOBJFull(string path)
+        public static MeshGeometry3D CreateMeshFromOBJFull(string path, out Color diffuse)
         {
             if (!NativeBridge.LoadOBJFull(
                 path,
                 out IntPtr vPtr, out int vCount,
                 out IntPtr uvPtr, out int uvCount,
                 out IntPtr nPtr, out int nCount,
-                out IntPtr idxPtr, out int idxCount))
+                out IntPtr idxPtr, out int idxCount,
+                out IntPtr colorPtr))
             {
+                diffuse = Colors.Gray;
                 throw new Exception("LoadOBJFull failed");
+            }
+
+            // 色を取り出す
+            if (colorPtr != IntPtr.Zero)
+            {
+                float[] col = new float[3];
+                Marshal.Copy(colorPtr, col, 0, 3);
+                diffuse = Color.FromRgb(
+                    (byte)(col[0] * 255),
+                    (byte)(col[1] * 255),
+                    (byte)(col[2] * 255));
+            }
+            else
+            {
+                diffuse = Colors.Gray;
             }
 
             var mesh = new MeshGeometry3D();
@@ -92,7 +109,7 @@ namespace OWL_Engine
             foreach (var i in idxArr)
                 mesh.TriangleIndices.Add(i);
 
-            // UV（あれば）
+            // UV
             if (uvCount > 0 && uvPtr != IntPtr.Zero)
             {
                 float[] uvArr = new float[uvCount * 2];
@@ -105,7 +122,8 @@ namespace OWL_Engine
                 }
             }
 
-            if (nCount > 0)
+            // 法線
+            if (nCount > 0 && nPtr != IntPtr.Zero)
             {
                 float[] nArr = new float[nCount * 3];
                 Marshal.Copy(nPtr, nArr, 0, nArr.Length);
@@ -129,6 +147,9 @@ namespace OWL_Engine
             var obj = ObjectFactory.Create(type);
             obj.Id = id;
             obj.Position = new Point3D(pos.X, pos.Y, pos.Z);
+
+            obj.Type = type.ToString();
+            obj.ObjPath = null;
 
             // 2. TransFormWorld に位置情報を登録
             world.TryCreateObject(id, pos, out var node);
@@ -238,5 +259,96 @@ namespace OWL_Engine
         {
             return _objects.Values;
         }
+
+        public void LoadFromSaveData(SaveData data)
+        {
+            _objects.Clear();
+            world = new TransFormWorld();
+            //nextId = 1;
+
+            foreach (var saved in data.Objects ?? new List<SaveObject>())
+            {
+                WorldObject obj;
+
+                if (saved.Type == "OBJ")
+                {
+                    if (string.IsNullOrEmpty(saved.ObjPath))
+                        throw new Exception("OBJ のパスが保存されていません");
+
+                    var mesh = CreateMeshFromOBJFull(saved.ObjPath, out Color diffuse);
+                    obj = new ImportedObject();
+
+                    // デフォルト色（影が見える）
+                    obj.Color = diffuse;
+
+                    // Mesh をセット（Material も作られる）
+                    obj.SetMesh(mesh);
+
+                    obj.Type = "OBJ";
+                    obj.ObjPath = saved.ObjPath;
+
+                    // Material が null なら補完
+                    obj.EnsureMaterial();
+                }
+                else
+                {
+                    obj = ObjectFactory.Create(Enum.Parse<PrimitiveType>(saved.Type));
+                    obj.EnsureMaterial();
+                }
+
+                obj.Id = saved.Id;
+                obj.Name = saved.Name;
+                obj.Position = new Point3D(saved.X, saved.Y, saved.Z);
+                obj.ParentId = saved.ParentId;
+
+                _objects[obj.Id] = obj;
+
+                var cell = new IntVector3(
+                    (int)Math.Floor(saved.X),
+                    (int)Math.Floor(saved.Y),
+                    (int)Math.Floor(saved.Z)
+                );
+
+                world.TryCreateObject(obj.Id, cell, out _);
+                // ここで Model をいじらない。AddObject に任せる。
+                _renderer.AddObject(obj);
+
+                nextId = Math.Max(nextId, obj.Id + 1);
+            }
+
+            _renderer.UpdateObjectTransform(this);
+        }
+        public void UpdateObject(WorldObject obj)
+        {
+            _objects[obj.Id] = obj;
+        }
+        public int GetNextId()
+        {
+            return nextId++;
+        }
+        public void RemoveObject(int id)
+        {
+            if (_objects.TryGetValue(id, out var obj))
+            {
+                _objects.Remove(id);
+                _renderer.RemoveObject(id);
+                world.RemoveObject(id);
+            }
+        }
+
+        public void AddObject(WorldObject obj)
+        {
+            _objects[obj.Id] = obj;
+
+            var cell = new IntVector3(
+                (int)Math.Floor(obj.Position.X),
+                (int)Math.Floor(obj.Position.Y),
+                (int)Math.Floor(obj.Position.Z)
+            );
+
+            world.TryCreateObject(obj.Id, cell, out _);
+            _renderer.AddObject(obj);
+        }
+
     }
 }

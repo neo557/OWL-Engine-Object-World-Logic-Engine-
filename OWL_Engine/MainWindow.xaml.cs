@@ -1,11 +1,17 @@
 ﻿using DOESUE.Core;
 using DOESUE.Math;
+using Microsoft.Win32;
+using OWL_Engine.Asset;
 using OWL_Engine.Camera;
+using OWL_Engine.Command;
 using OWL_Engine.Managers;
 using OWL_Engine.Objects;
 using OWL_Engine.Raycaster;
 using OWL_Engine.Render;
 using OWL_Engine.Worlds;
+using System.IO;
+using System.Numerics;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,6 +21,11 @@ using System.Windows.Media.Media3D;
 
 namespace OWL_Engine
 {
+    public interface ICommand
+    {
+        void Undo();
+        void Redo();
+    }
     public partial class MainWindow : Window
     {
         private WorldController? controller;
@@ -25,8 +36,13 @@ namespace OWL_Engine
         private IntVector3 center = new IntVector3(0, 0, 0);
         private IntVector3 lastcenter = new IntVector3(0, 0, 0);
         private GridMap? grid;
+        Stack<ICommand> undoStack = new();
+        Stack<ICommand> redoStack = new();
         private bool _isInternalSelectionChange = false;
         private Point _dragStartPoint;
+        private WorldObject? SelectedObject;
+        private bool _isUpdatingInspector = false;
+
         public SceneManager? SceneManager { get; private set; }
         public MainWindow()
         {
@@ -68,76 +84,165 @@ namespace OWL_Engine
 
         public void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            if (controller == null || renderer == null || selection == null)
+                return;
+
+            // ============================
+            // Ctrl 系ショートカット
+            // ============================
+
+            bool ctrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
+
+            // 保存
+            if (ctrl && e.Key == Key.S)
+            {
+                Save_Click(sender, e);
+                return;
+            }
+
+            // 読み込み
+            if (ctrl && e.Key == Key.O)
+            {
+                Export_Click(sender, e);
+                return;
+            }
+
+            // Undo
+            if (ctrl && e.Key == Key.Z)
+            {
+                Undo();
+                return;
+            }
+
+            // Redo
+            if (ctrl && e.Key == Key.Y)
+            {
+                Redo();
+                return;
+            }
+
+            // 全選択
+            if (ctrl && e.Key == Key.A)
+            {
+                foreach (var obj in controller.GetAllWorldObjects())
+                {
+                    selection.Select(obj.Id);
+                    renderer.HighlightObject(obj.Id);
+                }
+                return;
+            }
+
+            // 複製（Ctrl + D）
+            if (ctrl && e.Key == Key.D)
+            {
+                if (selection.SelectedId is int selId)
+                {
+                    var original = controller.GetObject(selId);
+                    if (original == null) return;
+
+                    // clone をここで宣言（スコープ外でも使える）
+                    WorldObject clone;
+
+                    if (original.Type == "OBJ")
+                    {
+                        if (string.IsNullOrEmpty(original.ObjPath))
+                        {
+                            MessageBox.Show("OBJ のパスが存在しないため複製できません。");
+                            return;
+                        }
+
+                        clone = new ImportedObject();
+                        clone.ObjPath = original.ObjPath;
+
+                        var mesh = WorldController.CreateMeshFromOBJFull(original.ObjPath, out Color diffuse);
+                        clone.Color = diffuse;
+                        clone.SetMesh(mesh);
+                    }
+                    else
+                    {
+                        clone = ObjectFactory.Create(Enum.Parse<PrimitiveType>(original.Type));
+                    }
+
+                    clone.Id = controller.GetNextId();
+                    clone.Position = new Point3D(original.Position.X + 1, original.Position.Y, original.Position.Z);
+                    clone.Scale = original.Scale;
+                    clone.Rotation = original.Rotation;
+                    clone.Color = original.Color;
+                    clone.Type = original.Type;
+
+                    controller.AddObject(clone);
+
+                    undoStack.Push(new CreateCommand(controller, clone));
+                    redoStack.Clear();
+
+                    RefreshHierarchy();
+                    selection.Select(clone.Id);
+                    renderer.HighlightObject(clone.Id);
+                }
+                return;
+            }
+
+            // ============================
+            // Delete（Ctrl なし）
+            // ============================
+
+            if (e.Key == Key.Delete && selection.HasSelection)
+            {
+                if (selection.SelectedId is int delId)
+                {
+                    var obj = controller.GetObject(delId);
+                    if (obj != null)
+                    {
+                        undoStack.Push(new DeleteCommand(controller, obj));
+                        redoStack.Clear();
+
+                        controller.RemoveObject(delId);
+                        renderer.RemoveObject(delId);
+                        selection.Clear();
+                    }
+                }
+                return;
+            }
+
+            // ============================
+            // 移動処理（矢印キー / WASD）
+            // ============================
+
             IntVector3 dir = new IntVector3(0, 0, 0);
             bool shift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
-            // Shiftなし → XZ平面移動
+
             if (!shift)
             {
                 if (e.Key == Key.Up || e.Key == Key.W) dir = new IntVector3(0, 0, 1);
-                if (e.Key == Key.Down|| e.Key == Key.S) dir = new IntVector3(0, 0, -1);
+                if (e.Key == Key.Down || e.Key == Key.S) dir = new IntVector3(0, 0, -1);
                 if (e.Key == Key.Left || e.Key == Key.A) dir = new IntVector3(-1, 0, 0);
                 if (e.Key == Key.Right || e.Key == Key.D) dir = new IntVector3(1, 0, 0);
             }
             else
             {
-                // Shiftあり → Y軸移動
-                if (e.Key == Key.Up) dir = new IntVector3(0, 1, 0);
-                if (e.Key == Key.Down) dir = new IntVector3(0, -1, 0);
+                if (e.Key == Key.Up|| e.Key == Key.W) dir = new IntVector3(0, 1, 0);
+                if (e.Key == Key.Down || e.Key == Key.S) dir = new IntVector3(0, -1, 0);
             }
 
-            if (e.Key == Key.Delete && selection?.HasSelection == true && world != null && renderer != null)
+            if (dir.X != 0 || dir.Y != 0 || dir.Z != 0)
             {
-                if (selection.SelectedId is int id)
+                if (selection.SelectedId is int moveId)
                 {
-                    if (world.GetObject(id) != null)
-                        world.RemoveObject(id);
+                    var obj = controller.GetObject(moveId);
+                    if (obj == null) return;
 
-                    renderer.RemoveObject(id);
-                    selection.Clear();
+                    var before = obj.Position;
+
+                    controller.Move(moveId, dir);
+
+                    var after = obj.Position;
+
+                    undoStack.Push(new MoveCommand(controller, moveId, before, after));
+                    redoStack.Clear();
                 }
             }
-
-            // + キーで細かくする
-            if (e.Key == Key.OemPlus && renderer != null)
-            {
-                renderer.SetGridSize(renderer.GridSize / 2);
-            }
-
-            // - キーで粗くする
-            if (e.Key == Key.OemMinus && renderer != null)
-            {
-                renderer.SetGridSize(renderer.GridSize * 2);
-            }
-
-            // 矢印キー以外なら、移動処理には進まない
-            bool isArrow =
-                e.Key == Key.Up || e.Key == Key.Down ||
-                e.Key == Key.Left || e.Key == Key.Right|| e.Key == Key.W || e.Key == Key.S|| e.Key == Key.A || e.Key == Key.D;
-
-            // Delete / + / - / Q / E はこのあと個別処理するのでここでは return しない
-            if (!isArrow && e.Key != Key.Delete &&
-                e.Key != Key.OemPlus && e.Key != Key.OemMinus &&
-                e.Key != Key.Q && e.Key != Key.E)
-            {
-                return;
-            }
-
-
-            if (selection?.HasSelection == true && world != null && renderer != null)
-            {
-                if (selection.SelectedId is int id)
-                {
-
-                    var before = world.GetObject(id)?.GetWorldPosition();
-
-                    controller?.Move(id, dir);
-
-                    var after = world.GetObject(id)?.GetWorldPosition();
-
-                }
-            }
-
         }
+
 
         void View3D_MouseDown(object sender, MouseEventArgs e)
         {
@@ -181,7 +286,7 @@ namespace OWL_Engine
             else
                 selection.Clear();
 
-            // 3. 新しい選択にハイライトを付ける ← これが抜けていた
+            // 3. 新しい選択にハイライトを付ける 
             if (id is int highlightId)
                 renderer?.HighlightObject(highlightId);
 
@@ -189,7 +294,15 @@ namespace OWL_Engine
             ClearTreeSelection();
             if (id is int selectId)
                 SelectInHierarchy(selectId);
-            
+
+            // 5. Inspector の更新
+            if (id is int objId && controller != null)
+            {
+                var obj = controller.GetObject(objId);
+                if (obj != null)
+                    SetSelectedObject(obj);
+            }
+
             _isInternalSelectionChange = false;
 
         }
@@ -291,6 +404,30 @@ namespace OWL_Engine
             if (pos.X < 0 || pos.Y < 0 || pos.X > View3D.ActualWidth || pos.Y > View3D.ActualHeight)
                 return;
 
+        }
+
+        private void Undo()
+        {
+            if (undoStack.Count == 0 || renderer == null || controller == null) return;
+
+            var cmd = undoStack.Pop();
+            cmd.Undo();
+            redoStack.Push(cmd);
+
+            RefreshHierarchy();
+            renderer.UpdateObjectTransform(controller);
+        }
+
+        private void Redo()
+        {
+            if (redoStack.Count == 0 || renderer == null || controller == null) return;
+
+            var cmd = redoStack.Pop();
+            cmd.Redo();
+            undoStack.Push(cmd);
+
+            RefreshHierarchy();
+            renderer.UpdateObjectTransform(controller);
         }
         private void GridSizeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -458,8 +595,130 @@ namespace OWL_Engine
                 item.Tag is WorldObject obj)
             {
                 selection.Select(obj.Id);
+
+                SetSelectedObject(obj);// Inspector 更新
             }
 
         }
+        private void Import_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog();
+            dialog.Filter = "OBJ Files (*.obj)|*.obj|All Files (*.*)|*.*";
+
+            if (dialog.ShowDialog() == true && controller != null)
+            {
+                controller.LoadOBJModel(dialog.FileName);
+                RefreshHierarchy();
+            }
+        }
+        private void Save_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog();
+            dialog.Filter = "JSON Files (*.json)|*.json";
+
+            if (dialog.ShowDialog() == true && controller != null)
+            {
+                var data = new SaveData();
+
+                foreach (var obj in controller.GetAllWorldObjects())
+                {
+                    data.Objects.Add(new SaveObject
+                    {
+                        Id = obj.Id,
+                        //Name = obj.Name,
+                        Type = obj.Type,      // Cube / Rectangle / OBJ
+                        ObjPath = obj.ObjPath, // OBJ の場合だけ
+                        X = obj.Position.X,
+                        Y = obj.Position.Y,
+                        Z = obj.Position.Z,
+                        ParentId = obj.ParentId
+                    });
+                }
+
+                var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(dialog.FileName, json);
+            }
+        }
+
+        private void Export_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog();
+            dialog.Filter = "JSON Files (*.json)|*.json|OBJ Files (*.obj)|*.obj|All Files (*.*)|*.*";
+
+            if (dialog.ShowDialog() == true)
+            {
+                var json = File.ReadAllText(dialog.FileName);
+                var data = JsonSerializer.Deserialize<SaveData>(json);
+                if (data != null)
+                {
+                    controller?.LoadFromSaveData(data);
+                    RefreshHierarchy();
+                }
+            }
+        }
+        private void SetSelectedObject(WorldObject obj)
+        {
+            SelectedObject = obj;
+
+            _isUpdatingInspector = true;
+
+            if (SelectedObject != null)
+            {
+                InspectorName.Text = SelectedObject.Name;
+
+                PosX.Text = SelectedObject.Position.X.ToString("0.###");
+                PosY.Text = SelectedObject.Position.Y.ToString("0.###");
+                PosZ.Text = SelectedObject.Position.Z.ToString("0.###");
+
+                ScaleX.Text = SelectedObject.Scale.X.ToString("0.###");
+                ScaleY.Text = SelectedObject.Scale.Y.ToString("0.###");
+                ScaleZ.Text = SelectedObject.Scale.Z.ToString("0.###");
+
+                RotX.Text = SelectedObject.Rotation.X.ToString("0.###");
+                RotY.Text = SelectedObject.Rotation.Y.ToString("0.###");
+                RotZ.Text = SelectedObject.Rotation.Z.ToString("0.###");
+                _isUpdatingInspector = true;
+            }
+
+            _isUpdatingInspector = false;
+        }
+        private void Pos_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingInspector || SelectedObject == null) return;
+
+            // 変更前の状態を保存（UndoStack に積む）
+            undoStack.Push((ICommand)ObjectSnapshot.FromObject(SelectedObject));
+            redoStack.Clear();
+
+            if (float.TryParse(PosX.Text, out float x) &&
+                float.TryParse(PosY.Text, out float y) &&
+                float.TryParse(PosZ.Text, out float z))
+            {
+                SelectedObject.Position = new Point3D(x, y, z);
+                UpdateObjectTransform(SelectedObject);
+            }
+        }
+        private void UpdateObjectTransform(WorldObject obj)
+        {
+            if(controller == null || renderer == null)
+                return;
+            // WorldController に反映
+            controller.UpdateObject(obj);
+
+            // Renderer に全体更新を投げる
+            renderer.UpdateObjectTransform(controller);
+        }
+
+        private void InspectorName_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && SelectedObject != null)
+            {
+                SelectedObject.Name = InspectorName.Text;
+
+                if (HierarchyTree.SelectedItem is TreeViewItem item)
+                    item.Header = SelectedObject.Name;
+            }
+        }
+
     }
 }

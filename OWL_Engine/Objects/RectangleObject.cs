@@ -13,6 +13,7 @@ namespace OWL_Engine.Objects
         {
             Name = "Rectangle";
             Mesh = CreateBoxMesh();
+            Color = Colors.LightGray;
         }
 
         private MeshGeometry3D CreateBoxMesh()

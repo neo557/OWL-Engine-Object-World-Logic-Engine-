@@ -23,7 +23,6 @@ namespace OWL_Engine.Managers
             WorldObject obj = new ImportedObject();
             obj.SetMesh(mesh);
             obj.Position = new Point3D(0, 0, 0);
-            obj.Color = Colors.White;
 
             _renderer.AddObject(obj);
         }
@@ -33,7 +32,6 @@ namespace OWL_Engine.Managers
             WorldObject obj = new ImportedObject();
             obj.SetMesh(mesh);
             obj.Position = new Point3D(0, 0, 0);
-            obj.Color = Colors.White;
 
             _renderer.AddObject(obj);
         }

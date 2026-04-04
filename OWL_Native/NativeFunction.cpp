@@ -8,6 +8,7 @@
 #include <cmath>
 #include <tuple>
 #include <map>
+#include <array>
 
 #define NOMINMAX          
 #include <Windows.h>
@@ -37,6 +38,37 @@ static FaceIndex ParseFaceElement(const std::string& token)
 
     return fi;
 }
+static std::map<std::string, std::array<float, 3>> LoadMTL(const std::string& mtlPath)
+{
+    std::ifstream file(mtlPath);
+    std::map<std::string, std::array<float, 3>> materials;
+
+    if (!file.is_open())
+        return materials;
+
+    std::string line;
+    std::string currentMat;
+
+    while (std::getline(file, line))
+    {
+        std::stringstream ss(line);
+        std::string type;
+        ss >> type;
+
+        if (type == "newmtl")
+        {
+            ss >> currentMat;
+        }
+        else if (type == "Kd" && !currentMat.empty())
+        {
+            float r, g, b;
+            ss >> r >> g >> b;
+            materials[currentMat] = { r, g, b };
+        }
+    }
+
+    return materials;
+}
 
 extern "C" __declspec(dllexport)
 bool LoadOBJFull(
@@ -44,7 +76,8 @@ bool LoadOBJFull(
     float** vertices, int* vertexCount,
     float** uvs, int* uvCount,
     float** normals, int* normalCount,
-    int** indices, int* indexCount
+    int** indices, int* indexCount,
+    float** diffuseColor
 )
 {
     std::ifstream file(path);
@@ -57,13 +90,34 @@ bool LoadOBJFull(
     std::vector<FaceIndex> faces;
 
     std::string line;
+    std::string currentMaterial;
+    std::map<std::string, std::array<float, 3>> materials;
+
+    // MTL のパス
+    std::string basePath(path);
+    basePath = basePath.substr(0, basePath.find_last_of("/\\") + 1);
+
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
         std::string type;
+        std::string firstMaterialUsed = "";
+        std::string currentMaterial = "";
         ss >> type;
 
-        if (type == "v")
+        if (type == "mtllib")
+        {
+            std::string mtlFile;
+            ss >> mtlFile;
+            materials = LoadMTL(basePath + mtlFile);
+        }
+        else if (type == "usemtl")
+        {
+            ss >> currentMaterial;
+            if (firstMaterialUsed.empty())
+                firstMaterialUsed = currentMaterial;
+        }
+        else if (type == "v")
         {
             float x, y, z;
             ss >> x >> y >> z;
@@ -116,7 +170,28 @@ bool LoadOBJFull(
                 faces.push_back(f4);
             }
         }
+        float* col = new float[3] { 0.7f, 0.7f, 0.7f }; // デフォルトはグレー
+        if (!firstMaterialUsed.empty() && materials.contains(firstMaterialUsed))
+        {
+            auto& kd = materials[firstMaterialUsed];
+            col[0] = kd[0];
+            col[1] = kd[1];
+            col[2] = kd[2];
+        }
+        else if (!materials.empty())
+        {
+            // ★ fallback：MTL の最初の色
+            auto it = materials.begin();
+            col[0] = it->second[0];
+            col[1] = it->second[1];
+            col[2] = it->second[2];
+        }
+
+        *diffuseColor = col;
     }
+
+    
+
 
     if (vList.empty())
         return false;
