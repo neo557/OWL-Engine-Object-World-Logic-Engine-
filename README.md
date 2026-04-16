@@ -1,6 +1,3 @@
-# OWL-Engine-Object-World-Logic-Engine-
-An engine application that assists with and manages the placement and setup of 3D objects.
-
 # OWL Engine (Object World Logic Engine)
 
 OWL Engine is a lightweight 3D world manipulation tool built with C# and WPF.  
@@ -8,7 +5,11 @@ It provides a simple and intuitive environment for creating, selecting, moving, 
 The project focuses on clarity, modularity, and extendability, making it suitable for prototyping logic-based world systems.
 
 ---
-
+## 未実装機能（追加予定）
+- light block
+- MLT installer
+- .obj Push
+- Events call
 ##  Features
 
 ###  3D Grid System
