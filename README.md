@@ -110,10 +110,10 @@ Transform3DGroup を固定し、Material のみを差し替える方式を採用
 
 ## Installation
 
-コード
+コード:
 
-git clone https://github.com/neo557/OWL_Engine.git
-
+[git clone https://github.com/neo557/OWL_Engine.git
+](https://github.com/neo557/OWL-Engine-Object-World-Logic-Engine-.git)
 Visual Studio 2022 以降で OWL Engine.slnx を開いてビルドしてください。
 
 ## Usage
