@@ -13,9 +13,6 @@ The OWL Engine is designed to “handle logical 3D world manipulation with a min
 - Elimination of Side Effects: Designed so that transforms are not altered during highlighting
 
 - Ease of Debugging: A structure that makes it easy to track state transitions
-
-- Translated with DeepL.com (free version)
-
 ---
 ## 未実装機能（追加予定）
 - light block
