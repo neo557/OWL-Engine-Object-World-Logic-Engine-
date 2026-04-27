@@ -4,6 +4,18 @@ OWL Engine is a lightweight 3D world manipulation tool built with C# and WPF.
 It provides a simple and intuitive environment for creating, selecting, moving, and managing objects inside a 3D grid-based world.  
 The project focuses on clarity, modularity, and extendability, making it suitable for prototyping logic-based world systems.
 
+The OWL Engine is designed to “handle logical 3D world manipulation with a minimal structure.”
+
+- Separation of Concerns: Clear separation of WorldController, SelectionManager, and Renderer
+
+- Unified Transform Pipeline: Consistent processing of Scale → Rotate → Translate
+
+- Elimination of Side Effects: Designed so that transforms are not altered during highlighting
+
+- Ease of Debugging: A structure that makes it easy to track state transitions
+
+- Translated with DeepL.com (free version)
+
 ---
 ## 未実装機能（追加予定）
 - light block
