@@ -1,92 +1,146 @@
 # OWL Engine (Object World Logic Engine)
 
-OWL Engine is a lightweight 3D world manipulation tool built with C# and WPF.  
-It provides a simple and intuitive environment for creating, selecting, moving, and managing objects inside a 3D grid-based world.  
-The project focuses on clarity, modularity, and extendability, making it suitable for prototyping logic-based world systems.
+## 概要
 
-The OWL Engine is designed to “handle logical 3D world manipulation with a minimal structure.”
+OWL Engine は C# / WPF で構築された軽量 3D ワールド操作エンジンです。
 
-- Separation of Concerns: Clear separation of WorldController, SelectionManager, and Renderer
+3D グリッド上でのオブジェクト生成・選択・移動・削除を直感的に行えるエディタを備え、
 
-- Unified Transform Pipeline: Consistent processing of Scale → Rotate → Translate
+論理ベースの 3D ワールド構築を最小構造で扱う ことを目的としています。
 
-- Elimination of Side Effects: Designed so that transforms are not altered during highlighting
+プロトタイピング、ロジック検証、ツール開発の基盤として利用できるよう、
 
-- Ease of Debugging: A structure that makes it easy to track state transitions
----
+明確な責務分離・拡張性・デバッグ容易性 を重視して設計されています。
+
+## 設計思想（Design Philosophy）
+
+OWL Engine は以下の原則に基づいて設計されています。
+
+##  責務分離（Separation of Concerns）
+
+- WorldController：ワールド状態とオブジェクト管理
+
+- SelectionManager：選択処理・ハイライト処理
+
+- Renderer：描画と Transform パイプライン
+
+- InputHelper：入力抽象化
+
+各コンポーネントが明確に分離されており、拡張やデバッグが容易です。
+
+## 統一 Transform パイプライン
+
+すべてのオブジェクトは
+
+// Scale → Rotate → Translate  
+
+の順で一貫して処理されるように設計されています。
+
+### 副作用の排除
+
+ハイライト処理などで Transform を破壊しないよう、
+Transform3DGroup を固定し、Material のみを差し替える方式を採用。
+
+### デバッグ容易性
+
+状態遷移が追跡しやすい構造を採用し、
+バグの原因特定と再発防止がしやすいように設計されています。
+
 ## 未実装機能（追加予定）
-- light block
-- MLT installer
-- .obj Push
-- Events call
-##  Features
+- Light block
 
-###  3D Grid System
-- Renders a clean, scalable 3D grid.
-- Supports raycasting from mouse position to grid coordinates.
-- 
-###  Object Interaction
-- Create objects on the grid.
-- Select objects with mouse picking.
-- Move objects across the world.
-- Delete objects.
-- Visual highlight on selected objects.
+- MLT installer
+
+- .obj Push
+
+- Events call
+
+##  Features（機能一覧）
+
+### 3D Grid System
+
+- 無限グリッドの描画
+
+- 動的サブディビジョンによる細分化
+
+- マウス座標からの正確なレイキャスト
+
+### Object Interaction
+
+- オブジェクト生成
+
+- マウスピッキングによる選択
+
+- 移動・削除
+
+- ハイライト表示
 
 ### Hierarchy Panel
-- Displays all objects in the world.
-- Automatically updates when objects are added or removed.
+
+- ワールド内の全オブジェクトを一覧表示
+
+- 追加・削除時に自動更新
 
 ### Camera Controls
-- Orbit, pan, and zoom around the world.
-- Smooth and intuitive movement.
+
+- オービット
+
+- パン
+
+- ズーム
+
+- スムーズで直感的な操作
 
 ### Raycasting System
-- Grid raycaster for placement.
-- Object raycaster for selection.
-- Accurate hit detection.
+
+- グリッド用レイキャスト
+
+-オブジェクト用レイキャスト
+
+- 高精度なヒット判定
 
 ### Modular Architecture
-- WorldController manages world logic.
-- SelectionManager handles object selection.
-- Renderer handles 3D drawing.
-- InputHelper abstracts keyboard/mouse input.
+- WorldController：ワールドロジック
 
----
+- SelectionManager：選択処理
+
+- Renderer：描画処理
+
+- InputHelper：入力抽象化
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/neo557/OWL_Engine.git
-Open the solution file:
+コード
 
- ## Code
-OWL Engine.slnx
-Build and run using Visual Studio 2022 or later.
+git clone https://github.com/neo557/OWL_Engine.git
+
+Visual Studio 2022 以降で OWL Engine.slnx を開いてビルドしてください。
 
 ## Usage
-- Left Click: Select object / place object
 
-- Right Click: Cancel selection
+- Left Click：選択 / 生成
 
-- Mouse Drag: Move camera
+- Right Click：選択解除
 
-- Scroll Wheel: Zoom
+- Mouse Drag：カメラ移動
 
-- Delete Key: Remove selected object
-## Roadmap
-# Planned Features
-- Object rotation and scaling
+- Scroll Wheel：ズーム
 
-- Save / Load world data
+- Delete Key：削除
 
-- Custom object types
+## Roadmap（今後の予定）
 
-- Material and color editing
+- オブジェクトの回転・スケーリング
 
-- Undo / Redo system
+- ワールドデータの保存 / 読み込み
 
-- UI improvements
+- カスタムオブジェクト対応
+
+- マテリアル / カラー編集
+
+- Undo / Redo
+
+- UI 改善
 
 ## Changelog
 
@@ -154,13 +208,26 @@ Build and run using Visual Studio 2022 or later.
 - Established modular architecture (WorldController, SelectionManager, Renderer, etc.)
 
 ## License
-- MIT License
-- Feel free to use, modify, and distribute this project.
+MIT License
 
-## Contributing
-Contributions are welcome!
-If you have ideas, improvements, or bug fixes, feel free to open an issue or submit a pull request.
-
-### Author
-Cro (neo557)  
+## Author
+Cro (neo557)
 Creator of OWL Engine
+
+## English Summary（簡易英語版）
+
+OWL Engine (Object World Logic Engine)
+
+OWL Engine is a lightweight 3D world manipulation tool built with C# and WPF.
+It provides an intuitive environment for creating, selecting, moving, and managing objects on a 3D grid.
+
+### Design Philosophy
+Separation of Concerns: WorldController / SelectionManager / Renderer
+
+- Unified Transform Pipeline: Scale → Rotate → Translate
+
+- No Side Effects: Highlighting does not alter transforms
+
+- Debug-Friendly Structure: Easy-to-track state transitions
+
+- For detailed design notes (in Japanese), see the full README above.
