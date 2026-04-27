@@ -32,7 +32,7 @@ OWL Engine は以下の原則に基づいて設計されています。
 
 すべてのオブジェクトは
 
-// Scale → Rotate → Translate  
+"Scale → Rotate → Translate"
 
 の順で一貫して処理されるように設計されています。
 
