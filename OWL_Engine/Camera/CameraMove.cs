@@ -152,10 +152,7 @@ namespace OWL_Engine.Camera
         {
             distance -= e.Delta * 0.05;
 
-            if (distance < 1)
-                distance = 1;
-
-            if (distance > 20000)
+           if (distance > 20000)
                 distance = 20000;
 
             UpdateCamera();
@@ -170,10 +167,10 @@ namespace OWL_Engine.Camera
             double z = distance * Math.Cos(radPitch) * Math.Sin(radYaw);
 
             camera.Position = new Point3D(
-        target.X + x,
-        target.Y + y,
-        target.Z + z
-    );
+                target.X + x,
+                target.Y + y,
+                target.Z + z
+            );
 
             camera.LookDirection = target - camera.Position;
         }
